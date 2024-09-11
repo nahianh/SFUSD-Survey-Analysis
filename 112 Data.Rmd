@@ -1,0 +1,195 @@
+---
+title: "EDUC112"
+author: "Nahian Haque"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(sf)
+library(ggplot2)
+library(dplyr)
+```
+
+```{r}
+survey <- read.csv("C:/Users/nahia/Downloads/sfusd_survey_4_9_24.csv")
+```
+
+
+```{r}
+# Calculate proportions for each unique value in multiple columns
+cols <- c("race", "education", "gay", "child_gay", "user_lang", "spec_ed", "ell", "lang_path", "foster", "homeless", "role")
+
+proportions_list <- lapply(survey[cols], function(x) prop.table(table(x)))
+
+# Print the proportions for each column
+for (i in 1:length(proportions_list)) {
+  cat("Column:", cols[i], "\n")
+  print(proportions_list[[i]])
+}
+```
+
+
+```{r}
+dfs <- list()
+
+for (i in 1:length(proportions_list)) {
+  # Create a data frame for the current column
+  df <- as.data.frame(proportions_list[[i]])
+  # Set appropriate column names
+  colnames(df) <- c("category", "proportion")
+  # Add the column name as an identifier
+  df$column <- cols[i]
+  # Append the data frame to the list
+  dfs[[i]] <- df
+}
+```
+
+```{r}
+dfs[[1]]
+```
+
+
+```{r}
+barplot(height = dfs[[1]]$proportion, names.arg = dfs[[1]]$category, 
+        main = paste("Bar plot for", dfs[[1]]$column[1]),
+        ylab = "Proportion",
+        las = 2, cex.names = 0.5)
+text(x = barplot(dfs[[1]]$proportion, add = TRUE),  # Add bars on existing plot and get x-coordinates
+     y = dfs[[1]]$proportion,  # Use the same y-coordinates as bars
+     labels = scales::percent(dfs[[1]]$proportion),  # Format labels as percentages
+     pos = 3, cex = 0.5, col = "black")  # Adjust position, size, and color of text labels
+```
+
+
+Trying geospatial:
+```{r}
+survey_zips <- as.data.frame(prop.table(table(survey$zip)))
+```
+
+```{r}
+sf_shp <- st_read("C:/Users/nahia/Downloads/data/sfzipcodes.shp")
+
+sf_zip_merged <- merge(sf_shp, survey_zips,
+                       by.x="ZIP_CODE", by.y="Var1", all.x=TRUE, all.y=TRUE)
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = sf_zip_merged,
+          aes(fill = Freq), color = "black") +
+  scale_fill_gradient(low = "lightblue", high = "darkblue") +
+  labs(title = "San Francisco Zip Code Areas by Respondents")
+```
+Note: There were 107 unique zip codes that did not correspond with a SF zip code (starting with 941)
+
+# Survey Analysis
+1. Grouped by race, what are the average responses to each of the Equity, Excellence, Efficiency questions?
+2. Same as 1, grouped by zip code
+3. Same as 1, grouped by educ.
+
+General Average Responses
+```{r}
+colMeans(survey[, c(19:34, 40:42)], na.rm = TRUE)
+```
+Equity
+```{r}
+survey %>%
+  group_by(race) %>%
+  summarise_at(vars(eq_his, eq_hin, eq_as, eq_pa, equity),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+```{r}
+survey %>%
+  group_by(zip) %>%
+  summarise_at(vars(eq_his, eq_hin, eq_as, eq_pa, equity),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+```{r}
+survey %>%
+  group_by(education) %>%
+  summarise_at(vars(eq_his, eq_hin, eq_as, eq_pa, equity),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+
+```{r}
+survey %>%
+  group_by(role) %>%
+  summarise_at(vars(eq_his, eq_hin, eq_as, eq_pa, equity),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+
+
+Excellence
+```{r}
+survey %>%
+  group_by(race) %>%
+  summarise_at(vars(ex_ap, ex_scc, ex_sel, ex_sd, ex_att, excellence),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+```{r}
+survey %>%
+  group_by(zip) %>%
+  summarise_at(vars(ex_ap, ex_scc, ex_sel, ex_sd, ex_att, excellence),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+```{r}
+survey %>%
+  group_by(education) %>%
+  summarise_at(vars(ex_ap, ex_scc, ex_sel, ex_sd, ex_att, excellence),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+
+```{r}
+survey %>%
+  group_by(role) %>%
+  summarise_at(vars(ex_ap, ex_scc, ex_sel, ex_sd, ex_att, excellence),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+
+
+
+Efficiency 
+```{r}
+survey %>%
+  group_by(race) %>%
+  summarise_at(vars(er_se, er_fc, er_bu, er_bc, er_cpp, er_ocs, er_tt, efficiency),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+
+```{r}
+survey %>%
+  group_by(zip) %>%
+  summarise_at(vars(er_se, er_fc, er_bu, er_bc, er_cpp, er_ocs, er_tt, efficiency),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+
+```{r}
+survey %>%
+  group_by(education) %>%
+  summarise_at(vars(er_se, er_fc, er_bu, er_bc, er_cpp, er_ocs, er_tt, efficiency),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+
+```{r}
+survey %>%
+  group_by(role) %>%
+  summarise_at(vars(er_se, er_fc, er_bu, er_bc, er_cpp, er_ocs, er_tt, efficiency),
+  list(Mean_Response = mean), na.rm = TRUE)
+```
+
+
+#Format the written answers
+```{r}
+unique_equity_sugg <- distinct(survey, equity_sugg)
+```
+
+
+
